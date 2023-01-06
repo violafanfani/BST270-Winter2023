@@ -1,10 +1,12 @@
 ### Welcome to BST 270: Reproducible Data Science
 
 Instructor: Viola Fanfani (vfanfani@hsph.harvard.edu)
+TFs: Beau Coker (beaucoker@g.harvard.edu)
 
 January 9-13, 17-19, 9am-12pm
 
 Viola's office hour: by appointment
+Beau's office hour: by appointment
 
 #### Purpose of the course
 Reproducible research has become increasingly important in the biomedical sciences. The science community has recognized reproducibility is a growing challenge in basic, clinical and population sciences. Experimental design, data provenance, analytic methods and tools, and reporting science play a critical role in the biomedical research ecosystem to ensure scientific rigor, robustness and transparency. Statistical and computational methods and tools are fundamental for making scientific results reproducible. 
