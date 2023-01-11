@@ -34,7 +34,31 @@ dim(df)
 We have a total of 1,054 participants after merging the data frames. 
 
 ## Data Wrangling
+
+### Clean and filter the optimism and lipid scores, and the demographic, in particular the education fields
 ```{r}
 
 ```
+
+### Preprocess the Health status and cronic condition fields
+
+```{r}
+
+```
+
+
+### Preprocess the behavioral pathways, in particular the prudent diet
+
+```{r}
+
+```
+
+
+## Figure 1
+
+
+```{r}
+
+```
+
 
