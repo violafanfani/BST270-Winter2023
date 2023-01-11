@@ -21,6 +21,7 @@ This manuscript uses several variables from multiple data files. Some of these v
 ```{r, message=FALSE, warning=FALSE}
 library(dplyr)
 library(ggplot2)
+library(tidyr)
 library(forcats)
 ```
 
