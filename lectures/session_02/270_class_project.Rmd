@@ -90,7 +90,36 @@ df$B1PRSEX.x <- age
 ### Preprocess the Health status and cronic condition fields
 
 ```{r}
+# load data.table library via pacman
+if (!require('pacman')) {
+    install.packages('pacman')
+} 
+pacman::p_load('data.table')
 
+# convert data to data.table
+df <- data.table(df)
+
+# create chronic conditions variable
+df[!is.na(B1SCHROX), chronic_conditions := ifelse(B1SCHROX == '(1) Yes', 1, 0)] # recode to binary
+
+################################
+## blood pressure information ##
+################################
+# B1PA24: any history of high blood pressure
+# B1PA24B: any history of blood pressure medication use
+# B1PA24C: current blood pressure medication use
+# blood pressure medication variable is 1 (Yes) if you ever used blood pressure medication
+#                                       0 (no) if you explicitly never used blood pressure medication or if you never had high blood pressure 
+
+# create blood pressure medication variable
+df[!is.na(B1PA24B) | !is.na(B1PA24C), bp_med := ifelse( (B1PA24B == '(1) Yes' & !is.na(B1PA24B)) | (B1PA24C == '(1) Yes' & !is.na(B1PA24C)), 1, 0)]
+df[B1PA24 == '(2) No', bp_med := 0] # if no history of high bp, bp_med <- 0
+
+# convert data.table back to data.frame
+df <- as.data.frame(df)
+
+# # sanity-check
+# df[, c('B1PA24', 'B1PA24B', 'B1PA24C', 'bp_med')]
 ```
 
 
