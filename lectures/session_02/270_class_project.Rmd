@@ -21,6 +21,7 @@ This manuscript uses several variables from multiple data files. Some of these v
 ```{r, message=FALSE, warning=FALSE}
 library(dplyr)
 library(ggplot2)
+library(forcats)
 ```
 
 
@@ -37,7 +38,52 @@ We have a total of 1,054 participants after merging the data frames.
 
 ### Clean and filter the optimism and lipid scores, and the demographic, in particular the education fields
 ```{r}
+df <- df %>% drop_na(B1SORIEN, # optimism
+                     B4BHDL, # lipids
+                     B4BLDL, 
+                     B4BCHOL, 
+                     B4BTRIGL,
+                     B1PAGE_M2.x, # demographics 
+                     B1PRSEX.x,
+                     B1PF7A,
+                     B1PB1,
+                     B1STINC1)
 
+dim(df)
+
+# Collapse factors of the education variable to those that the authors use
+# Note that it is not clear whether the authors categorized "(08) Graduated from 2-year college, vocational school, or associate degree"
+# as "Some college" (as is traditional in social science research) or "College degree or greater" (which is more logical given the scale of the variable)
+educ <- fct_collapse(df$B1PB1,
+   `Less than high school` = c("(01) No school/some grade school (1-6)", 
+                               "(02) Eighth grade/junior high school (7-8)",
+                               "(03) Some high school (9-12 no diploma/no GED)"),
+   `High school degree` = c("(04) GED", "(05) Graduated from high school"),
+   `Some college` = c("(06) 1 to 2 years of college, no degree yet",
+                      "(07) 3 or more years of college, no degree yet"),
+   `College degree or greater` = c("(08) Graduated from 2-year college, vocational school, or associate degree", 
+                                   "(09) Graduated from a 4- or 5-year college, or bachelor's degree",
+                                   "(10) Some graduate school",
+                                   "(11) Master's degree",
+                                   "(12) PH.D., ED.D., MD, DDS, LLB, LLD, JD, or other professional degree")
+)
+
+df$B1PB1 <- educ
+
+# Collapse race variable categories
+race <- fct_collapse(df$B1PF7A, 
+             `White` = "(1) White",
+             `Nonwhite` = c("(2) Black and/or African American",
+                            "(3) Native American or Alaska Native Aleutian Islander/Eskimo",
+                            "(4) Asian",
+                            "(5) Native Hawaiian or Pacific Islander",
+                            "(6) Other (specify)")
+)
+df$B1PF7A <- race
+
+# Recode sex to simplify strings
+age <- fct_collapse(df$B1PRSEX.x, `Male` = "(1) Male", `Female` = "(2) Female")
+df$B1PRSEX.x <- age
 ```
 
 ### Preprocess the Health status and cronic condition fields
