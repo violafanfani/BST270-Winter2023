@@ -126,7 +126,45 @@ df <- as.data.frame(df)
 ### Preprocess the behavioral pathways, in particular the prudent diet
 
 ```{r}
+diet_score <- function() {
+   res <- 0
+   # Fruit >= 3
+   res <- res + ifelse(df$B4H21 %in% "(3) 3-4 Servings/day", 1, 0)
+   res <- res + ifelse(df$B4H21 %in% "(4) 5 Or more servings/day", 1, 0)
+   # Whole grain >= 3
+   res <- res + ifelse(df$B4H22 %in% "(3) 3-4 Servings/day", 1, 0)
+   res <- res + ifelse(df$B4H22 %in% "(4) 5 Or more servings/day", 1, 0)
+   # Fish >= 1
+   res <- res + ifelse(df$B4H23A %in% "(3) 1-2 X/week", 1, 0)
+   res <- res + ifelse(df$B4H23A %in% "(4) 3-4 X/week", 1, 0)
+   res <- res + ifelse(df$B4H23A %in% "(5) 5 Or more x/week", 1, 0)
+   # High fat meat <= 2
+   res <- res + ifelse(df$B4H23B %in% "(1) Never", 1, 0)
+   res <- res + ifelse(df$B4H23B %in% "(3) 1-2 X/week", 1, 0)
+   res <- res + ifelse(df$B4H23B %in% "(2) Less than once/week", 1, 0)
+   # Lean meat >= 1
+   res <- res + ifelse(df$B4H23C %in% "(3) 1-2 X/week", 1, 0)
+   res <- res + ifelse(df$B4H23C %in% "(4) 3-4 X/week", 1, 0)
+   res <- res + ifelse(df$B4H23C %in% "(5) 5 Or more x/week", 1, 0)
+   # No sugared beverages
+   res <- res + ifelse(df$B4H20 %in% "(1) None", 1, 0)
+   # Fast food and delivery
+   res <- res + ifelse(df$B4H24 %in% "(1) Never", 1, 0)
+   res <- res + ifelse(df$B4H24 %in% "(2) Less than once/week", 1, 0)
+   
+   return(res)
+}
 
+df$alcohol <- df$B4H36 # average number of drinks consumed/day in the past month. See page 1426 in the paper
+df$exercise <- ifelse(df$B4H25 == '(1) Yes', 1, 0) #regular exercise >= 3 times/week for 20 minutes (no, yes). We apply dummy coding as described in the paper.
+df$diet_score <- diet_score()
+df <- df %>% mutate(Smoking_Status =
+                case_when(
+                  B4H26A=="(1) Yes" | B1PA39=="(1) Yes" ~ 1
+                  , (B4H26=="(1) Yes" | B1PA38A=="(1) Yes") ~ 2
+                  , (B4H26=="(2) No" | B1PA38A=="(2) No") ~ 3
+                )
+              )
 ```
 
 
