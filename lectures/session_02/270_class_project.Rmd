@@ -28,8 +28,8 @@ library(forcats)
 
 ## Load and combine data
 ```{r}
-load("ICPSR_04652/DS0001/04652-0001-Data.rda") # load MIDUS2 interview/questionnaire data
-load("ICPSR_29282/DS0001/29282-0001-Data.rda") # load MIDUS2 biomarker data
+load("../session_01/midus_data_icpsr_04652_20221222/DS0001/04652-0001-Data.rda") # load MIDUS2 interview/questionnaire data
+load("../session_01/midus_data_icpsr_29282_20221222/DS0001/29282-0001-Data.rda") # load MIDUS2 biomarker data
 df <- inner_join(da29282.0001, da04652.0001, by="M2ID") # merge the two dataframes using an inner join
 dim(df)
 ```
@@ -72,6 +72,7 @@ educ <- fct_collapse(df$B1PB1,
 df$B1PB1 <- educ
 
 # Collapse race variable categories
+
 race <- fct_collapse(df$B1PF7A, 
              `White` = "(1) White",
              `Nonwhite` = c("(2) Black and/or African American",
@@ -85,7 +86,15 @@ df$B1PF7A <- race
 # Recode sex to simplify strings
 age <- fct_collapse(df$B1PRSEX.x, `Male` = "(1) Male", `Female` = "(2) Female")
 df$B1PRSEX.x <- age
+
+
+## Comment: usually it is better not to change columns, but to add them
+
+
+df_group1 = df
 ```
+
+There are 1012 subjects with complete demographic, optimism, and lipid data
 
 ### Preprocess the Health status and cronic condition fields
 
@@ -97,6 +106,7 @@ if (!require('pacman')) {
 pacman::p_load('data.table')
 
 # convert data to data.table
+
 df <- data.table(df)
 
 # create chronic conditions variable
@@ -120,8 +130,16 @@ df <- as.data.frame(df)
 
 # # sanity-check
 # df[, c('B1PA24', 'B1PA24B', 'B1PA24C', 'bp_med')]
+
+df <- df %>% drop_na(chronic_conditions, # optimism
+                     bp_med)
+
+dim(df)
+
+df_group2 = df
 ```
 
+We are down to 1011 individuals
 
 ### Preprocess the behavioral pathways, in particular the prudent diet
 
@@ -155,7 +173,13 @@ diet_score <- function() {
    return(res)
 }
 
+df = df %>% drop_na(B4H21, B4H22, B4H23A, B4H23B, B4H23C, B4H20, B4H24)
+
+# First we need to check if the person is reported a drinker (like smoking): B4H33
+
 df$alcohol <- df$B4H36 # average number of drinks consumed/day in the past month. See page 1426 in the paper
+df[is.na(df$B4H36),]$alcohol = ifelse(df[is.na(df$B4H36),]$B4H33 == '(2) No', 0, NA) # recode to binary
+
 df$exercise <- ifelse(df$B4H25 == '(1) Yes', 1, 0) #regular exercise >= 3 times/week for 20 minutes (no, yes). We apply dummy coding as described in the paper.
 df$diet_score <- diet_score()
 df <- df %>% mutate(Smoking_Status =
@@ -165,8 +189,17 @@ df <- df %>% mutate(Smoking_Status =
                   , (B4H26=="(2) No" | B1PA38A=="(2) No") ~ 3
                 )
               )
+
+
+
+df <- df %>% drop_na(diet_score, 
+                     alcohol,
+                     exercise,
+                     Smoking_Status,B1SNEGAF, B4PBMI)
+dim(df)
 ```
 
+We get to 999 individuals.
 
 ## Figure 1
 
