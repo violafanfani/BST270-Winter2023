@@ -1,0 +1,227 @@
+---
+title: "BST 270 In-class Project"
+output: html_document
+---
+
+## Introduction
+In this Rmarkdown file we will attempt to reproduce the figures, tables and analyses presented in the paper [_Relation between Optimism and Lipids in Midlife_.](https://www.ajconline.org/article/S0002-9149(13)00388-3/pdf)
+
+1. Boehm, J. K., Williams, D. R., Rimm, E. B., Ryff, C., & Kubzansky, L. D. (2013). Relation between Optimism and Lipids in Midlife. The American Journal of Cardiology, 111(10), 1425-1431.
+http://doi.org/10.1016/j.amjcard.2013.01.292
+
+In 1995, MIDUS survey data were collected from a total of 7,108 participants. The baseline sample was comprised of individuals from four subsamples: (1) a national RDD (random digit dialing) sample ($n = 3,487$); (2) oversamples from five metropolitan areas in the U.S. ($n = 757$); (3) siblings of individuals from the RDD sample ($n = 950$); and (4) a national RDD sample of twin pairs ($n = 1,914$). All eligible participants were non-institutionalized, English-speaking adults in the contiguous United States, aged 25 to 74. All respondents were invited to participate in a phone interview of approximately 30 minutes in length and complete 2 self-administered questionnaires (SAQs), each of approximately 45 pages in length. In addition, the twin subsample was administered a short screener to assess zygosity and other twin-specific information. With funding provided by the National Institute on Aging, a longitudinal follow-up of MIDUS I began in 2004. Every attempt was made to contact all original respondents and invite them to participate in a second wave of data collection. Of the 7,108 participants in MIDUS I, 4,963 were successfully contacted to participate in another phone interview of about 30 minutes in length. MIDUS II also included two self-administered questionnaires (SAQs), each of about 55 pages in length, which were mailed to participants. The overall response rate for the SAQs was 81\%. Over 1,000 journal articles have been written using MIDUS I and II data since 1995.
+
+Here we attempt to reproduce the findings of [1] and critique the reproducibility of the article. This particular article focuses only on MIDUS II data, including biomarker data, and investigates the relationship between optimism and lipids. The MIDUS II data and supporting codebook and other documents can be downloaded \href{https://www.icpsr.umich.edu/icpsrweb/ICPSR/studies/4652?archive=ICPSR&q=MIDUS+}{here}. The data can be downloaded in multiple formats. Here we use the R data files and perform all data cleaning and analyses in R version 3.5.1. The biomarker data can be downloaded \href{https://www.icpsr.umich.edu/icpsrweb/NACDA/studies/29282}{here}.
+
+
+## Codebook
+This manuscript uses several variables from multiple data files. Some of these variables don't have intuitive names and need to be manually looked up either online or in the codebooks provided in the data downloads. [This google sheet](https://docs.google.com/spreadsheets/d/1W9LxvfuGnVJm4tST61RtBPJYHuHzjuZE6lUKsIwtHaU/edit?usp=sharing) acts as a data dictionary for only the variables we believe were used for the analysis according to our understanding of the methods section of the paper.
+
+## Load needed packages
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(forcats)
+```
+
+
+## Load and combine data
+```{r}
+load("../session_01/midus_data_icpsr_04652_20221222/DS0001/04652-0001-Data.rda") # load MIDUS2 interview/questionnaire data
+load("../session_01/midus_data_icpsr_29282_20221222/DS0001/29282-0001-Data.rda") # load MIDUS2 biomarker data
+df <- inner_join(da29282.0001, da04652.0001, by="M2ID") # merge the two dataframes using an inner join
+dim(df)
+```
+We have a total of 1,054 participants after merging the data frames. 
+
+## Data Wrangling
+
+### Clean and filter the optimism and lipid scores, and the demographic, in particular the education fields
+```{r}
+df <- df %>% drop_na(B1SORIEN, # optimism
+                     B4BHDL, # lipids
+                     B4BLDL, 
+                     B4BCHOL, 
+                     B4BTRIGL,
+                     B1PAGE_M2.x, # demographics 
+                     B1PRSEX.x,
+                     B1PF7A,
+                     B1PB1,
+                     B1STINC1)
+
+dim(df)
+
+# Collapse factors of the education variable to those that the authors use
+# Note that it is not clear whether the authors categorized "(08) Graduated from 2-year college, vocational school, or associate degree"
+# as "Some college" (as is traditional in social science research) or "College degree or greater" (which is more logical given the scale of the variable)
+educ <- fct_collapse(df$B1PB1,
+   `Less than high school` = c("(01) No school/some grade school (1-6)", 
+                               "(02) Eighth grade/junior high school (7-8)",
+                               "(03) Some high school (9-12 no diploma/no GED)"),
+   `High school degree` = c("(04) GED", "(05) Graduated from high school"),
+   `Some college` = c("(06) 1 to 2 years of college, no degree yet",
+                      "(07) 3 or more years of college, no degree yet"),
+   `College degree or greater` = c("(08) Graduated from 2-year college, vocational school, or associate degree", 
+                                   "(09) Graduated from a 4- or 5-year college, or bachelor's degree",
+                                   "(10) Some graduate school",
+                                   "(11) Master's degree",
+                                   "(12) PH.D., ED.D., MD, DDS, LLB, LLD, JD, or other professional degree")
+)
+
+df$B1PB1 <- educ
+
+# Collapse race variable categories
+
+race <- fct_collapse(df$B1PF7A, 
+             `White` = "(1) White",
+             `Nonwhite` = c("(2) Black and/or African American",
+                            "(3) Native American or Alaska Native Aleutian Islander/Eskimo",
+                            "(4) Asian",
+                            "(5) Native Hawaiian or Pacific Islander",
+                            "(6) Other (specify)")
+)
+df$B1PF7A <- race
+
+# Recode sex to simplify strings
+age <- fct_collapse(df$B1PRSEX.x, `Male` = "(1) Male", `Female` = "(2) Female")
+df$B1PRSEX.x <- age
+
+
+## Comment: usually it is better not to change columns, but to add them
+
+
+df_group1 = df
+```
+
+There are 1012 subjects with complete demographic, optimism, and lipid data
+
+### Preprocess the Health status and cronic condition fields
+
+```{r}
+# load data.table library via pacman
+if (!require('pacman')) {
+    install.packages('pacman')
+} 
+pacman::p_load('data.table')
+
+# convert data to data.table
+
+df <- data.table(df)
+
+# create chronic conditions variable
+df[!is.na(B1SCHROX), chronic_conditions := ifelse(B1SCHROX == '(1) Yes', 1, 0)] # recode to binary
+
+################################
+## blood pressure information ##
+################################
+# B1PA24: any history of high blood pressure
+# B1PA24B: any history of blood pressure medication use
+# B1PA24C: current blood pressure medication use
+# blood pressure medication variable is 1 (Yes) if you ever used blood pressure medication
+#                                       0 (no) if you explicitly never used blood pressure medication or if you never had high blood pressure 
+
+# create blood pressure medication variable
+df[!is.na(B1PA24B) | !is.na(B1PA24C), bp_med := ifelse( (B1PA24B == '(1) Yes' & !is.na(B1PA24B)) | (B1PA24C == '(1) Yes' & !is.na(B1PA24C)), 1, 0)]
+df[B1PA24 == '(2) No', bp_med := 0] # if no history of high bp, bp_med <- 0
+
+# convert data.table back to data.frame
+df <- as.data.frame(df)
+
+# # sanity-check
+# df[, c('B1PA24', 'B1PA24B', 'B1PA24C', 'bp_med')]
+
+df <- df %>% drop_na(chronic_conditions, # optimism
+                     bp_med)
+
+dim(df)
+
+df_group2 = df
+```
+
+We are down to 1011 individuals
+
+### Preprocess the behavioral pathways, in particular the prudent diet
+
+```{r}
+diet_score <- function() {
+   res <- 0
+   # Fruit >= 3
+   res <- res + ifelse(df$B4H21 %in% "(3) 3-4 Servings/day", 1, 0)
+   res <- res + ifelse(df$B4H21 %in% "(4) 5 Or more servings/day", 1, 0)
+   # Whole grain >= 3
+   res <- res + ifelse(df$B4H22 %in% "(3) 3-4 Servings/day", 1, 0)
+   res <- res + ifelse(df$B4H22 %in% "(4) 5 Or more servings/day", 1, 0)
+   # Fish >= 1
+   res <- res + ifelse(df$B4H23A %in% "(3) 1-2 X/week", 1, 0)
+   res <- res + ifelse(df$B4H23A %in% "(4) 3-4 X/week", 1, 0)
+   res <- res + ifelse(df$B4H23A %in% "(5) 5 Or more x/week", 1, 0)
+   # High fat meat <= 2
+   res <- res + ifelse(df$B4H23B %in% "(1) Never", 1, 0)
+   res <- res + ifelse(df$B4H23B %in% "(3) 1-2 X/week", 1, 0)
+   res <- res + ifelse(df$B4H23B %in% "(2) Less than once/week", 1, 0)
+   # Lean meat >= 1
+   res <- res + ifelse(df$B4H23C %in% "(3) 1-2 X/week", 1, 0)
+   res <- res + ifelse(df$B4H23C %in% "(4) 3-4 X/week", 1, 0)
+   res <- res + ifelse(df$B4H23C %in% "(5) 5 Or more x/week", 1, 0)
+   # No sugared beverages
+   res <- res + ifelse(df$B4H20 %in% "(1) None", 1, 0)
+   # Fast food and delivery
+   res <- res + ifelse(df$B4H24 %in% "(1) Never", 1, 0)
+   res <- res + ifelse(df$B4H24 %in% "(2) Less than once/week", 1, 0)
+   
+   return(res)
+}
+
+df = df %>% drop_na(B4H21, B4H22, B4H23A, B4H23B, B4H23C, B4H20, B4H24)
+
+# First we need to check if the person is reported a drinker (like smoking): B4H33
+
+df$alcohol <- df$B4H36 # average number of drinks consumed/day in the past month. See page 1426 in the paper
+df[is.na(df$B4H36),]$alcohol = ifelse(df[is.na(df$B4H36),]$B4H33 == '(2) No', 0, NA) # recode to binary
+
+df$exercise <- ifelse(df$B4H25 == '(1) Yes', 1, 0) #regular exercise >= 3 times/week for 20 minutes (no, yes). We apply dummy coding as described in the paper.
+df$diet_score <- diet_score()
+df <- df %>% mutate(Smoking_Status =
+                case_when(
+                  B4H26A=="(1) Yes" | B1PA39=="(1) Yes" ~ 1
+                  , (B4H26=="(1) Yes" | B1PA38A=="(1) Yes") ~ 2
+                  , (B4H26=="(2) No" | B1PA38A=="(2) No") ~ 3
+                )
+              )
+
+
+
+df <- df %>% drop_na(diet_score, 
+                     alcohol,
+                     exercise,
+                     Smoking_Status,B1SNEGAF, B4PBMI)
+dim(df)
+```
+
+We get to 999 individuals.
+
+In the end, we were unable to achieve a sample size of $N = 990$ using our filters, so our cohort is different from that of the original paper.
+We attempt to recreate Figure 1 and Tables 1-3 using our $N = 999$ population. 
+
+Note - we won't be calculating the column values or the p-values for Table 1.
+
+## Figure 1
+
+```{r}
+df %>% mutate(opt_level = ifelse(B1SORIEN <= 22, "Low", ifelse(B1SORIEN <= 26, "Medium", "High")),
+              B1SORIEN = round(B1SORIEN)) %>%
+  ggplot(aes(B1SORIEN)) +
+  geom_histogram(binwidth = 0.5, col = "black", aes(fill = opt_level), bins = length(unique(df$B1SORIEN))) +
+  scale_x_continuous(breaks = seq(6, 30, by = 2)) +
+  scale_y_continuous(breaks = seq(0, 100, by=10)) +
+  scale_fill_manual(values = c("white", "black", "gray")) +
+  theme(legend.position = "none", text = element_text(size = 14),
+        panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  labs(y = "Frequency", x = "Optimisim Score")
+```
+
+
+
+
+
